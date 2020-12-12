@@ -8,32 +8,53 @@
 Graph::Graph()
 {
 }
+Graph::Graph(int id)
+{
+	addElement(id);
+}
 bool cmpNodeID(Node* a, Node* b) {
 	return a->ID < b->ID;
 }
-
 void Graph::addElement(int node)
 {
-	int firstEdge;
+	int firstEdge,index;
 	Node* n;
-	if (nodes.empty()) {
-		firstEdge = 0;
+	
+	auto it = find_if(nodes.begin(), nodes.end(), [node](Node* a) {return a->ID == node; });
+
+	if (it == nodes.end()) {
+		n = new Node(node, 0);
+
+		if (nodes.empty()) {
+			firstEdge = 0;
+			nodes.insert(lower_bound(nodes.begin(), nodes.end(), n, cmpNodeID), n);
+		}
+		else
+		{
+			index = distance(nodes.begin(),lower_bound(nodes.begin(), nodes.end(), n, cmpNodeID));
+			nodes.insert(nodes.begin()+ index, n);
+			if ((index + 1) != nodes.size())
+				n->firstEdge = nodes[index + 1]->firstEdge;
+			else
+				n->firstEdge = edges.size();
+		}
 	}
-	else
-	{
-		firstEdge = edges.size();
+	
+	else {
+		throw exception("Vec postoji element");
 	}
-	n = new Node(node, firstEdge);
-	nodes.insert(lower_bound(nodes.begin(), nodes.end(), n, cmpNodeID),n);
-	//da li postoji vec node sa istim imenom exc
+	
 }
 
 
 void Graph::removeElement(int node)
 {
-	int begin,end,index;
+	int begin, end;
 	int removedEdges = 0;
-	Node* it=nullptr;
+	Node* it = nullptr;
+	auto i = find_if(nodes.begin(), nodes.end(), [node](Node* a) {return a->ID == node; });
+	if (i == nodes.end())
+		throw exception("Ne postoji element");
 
 	for (int index=0; index < nodes.size();index++)
 	{
@@ -76,8 +97,12 @@ bool cmpEdgesID(Edge* a, Edge* b) {
 }
 void Graph::addEdge(int node1, int node2, double cost)
 {
+	auto it1 = find_if(nodes.begin(), nodes.end(), [node1](Node* a) {return a->ID == node1; });
+	auto it2 = find_if(nodes.begin(), nodes.end(), [node2](Node* a) {return a->ID == node2; });
+	if (it1 == nodes.end()|| it1 == nodes.end())
+		throw exception("Ne postoji element");
 
-	int  first,second,begin,end,id, inc = 0;
+	int  first,second,begin,end, inc = 0;
 	Edge* e;
 	Node* n;
 	bool endCheck;
@@ -95,10 +120,26 @@ void Graph::addEdge(int node1, int node2, double cost)
 		n->firstEdge += inc;
 		if (n->ID == first || n->ID == second)
 		{
-			if (inc == 0)
-				e = new Edge(second);
+			auto startIt=edges.begin()+ n->firstEdge;
+			vector<Edge*>::iterator endIt;
+			if ((i + 1) != nodes.size()) 
+				endIt = edges.begin() + nodes[i + 1]->firstEdge+inc;
 			else
-				e = new Edge(first);
+				endIt =edges.end();
+			if (inc == 0) {
+				auto it = find_if(startIt, endIt, [second](Edge* a) {return a->IDSinkNode == second; });
+				if (it != endIt)
+					throw exception("Vec postoji veza");
+				else
+					e = new Edge(second, cost);
+			}
+			else {
+				auto it = find_if(startIt, endIt, [first](Edge* a) {return a->IDSinkNode == first; });
+				if (it != endIt)
+					throw exception("Vec postoji veza");
+				else
+		 			e = new Edge(first,cost);
+			}
 			begin = n->firstEdge;
 			endCheck = (i + 1) != nodes.size();
 			if (endCheck)
@@ -108,9 +149,7 @@ void Graph::addEdge(int node1, int node2, double cost)
 			if (edges.empty())
 				edges.push_back(e);
 			else
-			edges.insert(lower_bound(edges.begin()+begin,edges.begin()+end,e, cmpEdgesID), e);
-
-
+				edges.insert(lower_bound(edges.begin() + begin, edges.begin() + end, e, cmpEdgesID), e);
 			inc++;
 		}
 	}
@@ -119,6 +158,11 @@ void Graph::addEdge(int node1, int node2, double cost)
 
 void Graph::removeEdge(int node1, int node2)
 {
+	auto it1 = find_if(nodes.begin(), nodes.end(), [node1](Node* a) {return a->ID == node1; });
+	auto it2 = find_if(nodes.begin(), nodes.end(), [node2](Node* a) {return a->ID == node2; });
+	if (it1 == nodes.end() || it1 == nodes.end())
+		throw exception("Ne postoji element");
+
 	int  begin, end, dec = 0;
 	Node* it;
 	for (int index = 0; index < nodes.size(); index++)
@@ -136,13 +180,16 @@ void Graph::removeEdge(int node1, int node2)
 			{
 				if (edges[i]->IDSinkNode == ((it->ID == node1) ? node2 : node1)) 
 				{
+					delete edges[i];
 					edges.erase(edges.begin() + i);
+					dec--;
 					break;
 				}
 			}
-			dec--;
 		}
 	}
+	if (dec != -2)
+		throw exception("Ne postoji veza");
 
 }
 
@@ -150,27 +197,79 @@ void Graph::outputGraph()
 {
 	int begin, end, i = 0;
 	Node* node;
-	for (int index = 0; index < nodes.size();index++) {
+	cout <<"Ispis:"<< endl;
+	for (int index = 0; index < nodes.size(); index++)
+	{
 		node = nodes[index];
-		cout << "ID cvora-" << node->ID << "ID njegovih susednih cvorova-";
+		cout << node->ID << "  :";
 		begin = nodes[index]->firstEdge;
-		if ((index + 1) != nodes.size()) {
+		if ((index + 1) != nodes.size())
 			end = nodes[index + 1]->firstEdge;
-		}
 		else
 			end = edges.size();
-		for (int i = begin; i < end; i++)
-		{
-			cout << edges[i]->IDSinkNode<<setw(3);
-		}
-		cout << endl;
+		cout << "{";
+			for (int i = begin; i < end; i++)
+			{
+				cout << setw(2) << edges[i]->IDSinkNode << ((i==end-1)? "":",");
+			}
+		cout <<"}"<< endl;
 	}
+}
+
+vector<Node*>::iterator Graph::findNode(int id)
+{
+	for (auto it = nodes.begin(); it < nodes.end(); it++)
+		if ((*it)->ID == id) {
+			return it;
+		}
+}
+
+int Graph::nodeIndex(int id)
+{
+	return distance(nodes.begin(),findNode(id));
+}
+
+Node* Graph::node(int index)
+{
+	return nodes[index];
+}
+
+Edge* Graph::edge(int index)
+{
+	return edges[index];
+}
+
+Graph::Graph(Graph&& g):nodes(g.nodes),edges(g.edges)
+{
+	g.nodes.clear();
+	g.edges.clear();
+}
+
+
+Graph& Graph::operator=(Graph&& g)
+{
+	nodes = move(g.nodes);
+	edges = move(g.edges);
+	g.nodes.clear();
+	g.edges.clear();
+	return *this;
+}
+
+Graph::Graph(Graph& g):nodes(g.nodes),edges(g.edges)
+{
 }
 
 Graph::~Graph()
 {
+	if(nodes.size()>0)
 	for (Node* it : nodes) {
 		delete it;
+		it = nullptr;
+	}
+	if (edges.size() > 0)
+	for (Edge* it : edges) {
+		delete it;
+		it = nullptr;
 	}
 	nodes.clear();
 	edges.clear();
@@ -186,6 +285,16 @@ bool Graph::emptyEdges()
 	return edges.empty();
 }
 
+int Graph::nodesSize()
+{
+	return nodes.size();
+}
+
+int Graph::edgesSize()
+{
+	return edges.size();
+}
+
 
 void showOptions(Graph* graph)
 {
@@ -194,11 +303,15 @@ void showOptions(Graph* graph)
 	if (graph)
 	{
 		cout << "1.Ubaciti element \n";
+		if (graph->nodesSize() > 0)
 		cout << "2.Izbaciti element\n";
+		if (graph->nodesSize() > 1)
 		cout << "3.Dodati granu izmedju dva cvora\n";
-		if (!graph->emptyEdges())
+		if (graph->edgesSize()> 1)
 			cout << "4.Izbaciti granu izmedju dva cvora\n";
+		if (graph->nodesSize() > 0)
 		cout << "5.Prikaz grafa\n";
+		if (graph->nodesSize() > 0)
 		cout << "6.Brisanje grafa\n";
 		cout << "7.Zatavaranje aplikacije\n";
 
@@ -213,62 +326,86 @@ void showOptions(Graph* graph)
 
 Graph*  doOperation(int i, Graph* graph ,bool& end)
 {
-	int node,node2,length;
-	switch (i)
-	{
-	case 0:
-		graph = new Graph();
-		cout << "Unesite broj elementa graf" << endl;
-		cin >> length;
-		cout << "Unesite element u jednom redu" << endl;
-		for (int i=0;i< length;i++)
+	try {
+		int node, node2, length;
+		if (i != 1 && i != 7)
 		{
-			cin >> node;
-			graph->addElement(node);
+			if (i < 0 || i>8) 
+				throw exception("Ne dozvoljenja operacija");
+			else {
+				if (graph) {
+					if (i == 0)
+						throw exception("Ne dozvoljenja operacija");
+					if ((i == 4 && graph->edgesSize() < 2) || (i == 3 && graph->nodesSize() < 2)|| ((i==2||i==5||i==6) && graph->nodesSize() < 1))
+						throw exception("Ne dozvoljenja operacija");
+				}
+				else {
+					if (i >= 1 && i <= 6)
+						throw exception("Ne dozvoljenja operacija");
+				}
+			}
 		}
-		break;
-	case 1:
-		cout << "Unesite element koji hocete da ubacite" << endl;
-		cin >> node;
-		graph->addElement(node);
-		// if(cin.peek()!='\n') exception
-		break;
-	case 2:
-		cout << "Unesite element koji hocete da izbacite" << endl;
-		cin >> node;
-		graph->removeElement(node);
-		// if(cin.peek()!='\n') exception
-		break;
-	case 3:
-		cout << "Unesite dva element izmedju kojih hocete da dodate vezu" << endl;
-		cin >> node;
-		cin >> node2;
-		graph->addEdge(node,node2);
-		// if(cin.peek()!='\n') exception
-		break;
-	case 4:
-		cout << "Unesite dva element izmedju kojih hocete da izbrisete vezu" << endl;
-		cin >> node;
-		cin >> node2;
-		graph->removeEdge(node, node2);
-		// if(cin.peek()!='\n') exception
-		break;
-	case 5:
-		graph->outputGraph();
-		// if(cin.peek()!='\n') exception
-		break;
-	case 6:
-		delete graph;
-		graph = nullptr;
-		break;
+			
+		switch (i)
+		{
+		case 0:
+			graph = new Graph();
+			cout << "Unesite broj elementa graf" << endl;
+			cin >> length;
+			cout << "Unesite element u jednom redu" << endl;
+			for (int i = 0; i < length; i++)
+			{
+				cin >> node;
+				graph->addElement(node);
+			}
+			break;
+		case 1:
+			cout << "Unesite element koji hocete da ubacite" << endl;
+			cin >> node;
+			if (!graph)
+				graph = new Graph();
+			graph->addElement(node);
+			break;
+		case 2:
+			cout << "Unesite element koji hocete da izbacite" << endl;
+			cin >> node;
+			graph->removeElement(node);
+			break;
+		case 3:
+			cout << "Unesite dva element izmedju kojih hocete da dodate vezu" << endl;
+			cin >> node;
+			cin >> node2;
+			graph->addEdge(node, node2);
+			break;
+		case 4:
+			cout << "Unesite dva element izmedju kojih hocete da izbrisete vezu" << endl;
+			cin >> node;
+			cin >> node2;
+			graph->removeEdge(node, node2);
+			break;
+		case 5:
+			graph->outputGraph();
+			break;
+		case 6:
+			delete graph;
+			graph = nullptr;
+			break;
 
-	case 7:
-		delete graph;
-		graph = nullptr;
-		end = true;
-		break;
+		case 7:
+			delete graph;
+			graph = nullptr;
+			end = true;
+			break;
+		}
+		return graph;
 	}
-	return graph;
+	catch (exception& e) {
+
+		delete graph;
+		cout << e.what() << endl;
+		exit(2);
+		
+	}
 }
 
 void Zadatak1()

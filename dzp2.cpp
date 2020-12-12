@@ -4,38 +4,45 @@
 using namespace std;
 
 
-void initialize()
-{
-	int length;
-	int node1, node2;
-	double price;
-	int size1,size2;
-	Graph* graph = nullptr;
-	set<int> nodeSet;
-	cout << "Koliko ima kljucnih mesta u gradu" << endl;
-	cin >> length;
-	graph = new Graph();
-	cout << "Navadite kljucna mesta u gradu u formatu :cvor1 cvor2 cena" << endl;
-	for (int i = 0; i < length; i++)
-	{
-		//proveri da li vec postoji
-		cin >> node1>>node2 >>price;
-		size1 = nodeSet.size();
-		nodeSet.insert(node1);
-		if (size1 != nodeSet.size()) {
-			graph->addElement(node1);
-		}
-		size2 = nodeSet.size();
-		nodeSet.insert(node2);
-		if ((size2) != nodeSet.size())
-			graph->addElement(node2);
-		//if (size1==size2)excp
-		graph->addEdge(node1, node2,price);
+double minimalCost(Graph& mainGraph, vector<Graph>& separatedGraphs) {
 
+	Graph copy;
+
+	Node* n;
+	for (int index = 0; index < mainGraph.nodesSize(); index++) {
+		n = mainGraph.node(index);
 	}
+
+	return 0;
 }
 
 void Zadatak2()
 {
-	initialize();
+	try {
+		int length, command;
+		int node1, node2;
+		double price;
+		vector<Graph> separatedGraphs;
+		Graph mainGraph;
+		cout << "Koliko ima kljucnih mesta u gradu" << endl;
+		cin >> length;
+		cout << "Navadite ID kljucnih mesta u jednom redu" << endl;
+		for (int i = 0; i < length; i++)
+		{
+			cin >> node1;
+			mainGraph.addElement(node1);
+			separatedGraphs.emplace_back(node1);
+		}
+		cout << "Unesite ID dva mesta i cenu izgradnje tog puta ili -1 za kraj ubacivanja" << endl;
+		while (1) {
+			cin >> node1;
+			if (node1 == -1)
+				break;
+			cin >> node2 >> price;
+			mainGraph.addEdge(node1, node2, price);
+		}
+		cout << "Minimalna cena izgradnje je";//minimalCost(mainGraph,separatedGraphs);
+	}
+	catch (exception& e) {
+	}
 }

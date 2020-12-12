@@ -16,21 +16,31 @@ public:
 	int IDSinkNode;
 	double cost;
 private:
-	Edge(int IDSink, double cost = 0);
+	Edge(int IDSink, double cost);
 	friend class Graph;
 };
 class Graph
 {
 public:
 	Graph();
+	Graph(int id);
 	void addElement(int node);
 	void removeElement(int node);
 	void addEdge(int node1, int node2,double cost=0);
 	void removeEdge(int node1, int node2);
 	void outputGraph();
+	vector<Node*>::iterator findNode(int id);
+	int nodeIndex(int id);
+	Node* node(int index);
+	Edge* edge(int index);
+	Graph( Graph&& g);
+	Graph& operator= (Graph&& g);
+	Graph(Graph& g);
 	~Graph();
 	bool emptyNodes();
 	bool emptyEdges();
+	int nodesSize();
+	int edgesSize();
 
 private:
 
