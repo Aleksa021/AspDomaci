@@ -1,7 +1,18 @@
 #ifndef DZP1
 #define DZP1
 #include<vector>
+#include<string>
 using namespace std;
+class Path {
+public:
+	Path();
+	Path(double l, int p);
+	double lenght;
+	int endID;
+	vector<pair<string, int>>outputPaths;
+	//vector<string> outputPaths;
+	//vector<int> numberOfSpecialPaths;
+};
 class Node {
 public:
 	int ID;
@@ -15,8 +26,9 @@ class Edge {
 public:
 	int IDSinkNode;
 	double cost;
+	bool newPath;
 private:
-	Edge(int IDSink, double cost);
+	Edge(int IDSink, double cost, bool np);
 	friend class Graph;
 };
 class Graph
@@ -26,16 +38,23 @@ public:
 	Graph(int id);
 	void addElement(int node);
 	void removeElement(int node);
-	void addEdge(int node1, int node2,double cost=0);
+	void addEdge(int node1, int node2,double cost=0,bool np=false);
 	void removeEdge(int node1, int node2);
 	void outputGraph();
 	vector<Node*>::iterator findNode(int id);
 	int nodeIndex(int id);
+	void edgeIndex(int id1, int id2,int& index1,int& index2);
+	void edgeRange(int nodeindex,int& index1, int& index2);
+	void sortedEdgeInsert(int begin, int end, Edge* e);
+	void sortedNodeInsert(Node* n);
+	double findMinimalCost(int& id1, int& id2);
+	void mergeGraphs(Graph& g);
+	void clearEdges();
 	Node* node(int index);
 	Edge* edge(int index);
 	Graph( Graph&& g);
 	Graph& operator= (Graph&& g);
-	Graph(Graph& g);
+	Graph(const Graph& g);
 	~Graph();
 	bool emptyNodes();
 	bool emptyEdges();

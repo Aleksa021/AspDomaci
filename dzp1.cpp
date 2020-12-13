@@ -19,12 +19,8 @@ void Graph::addElement(int node)
 {
 	int firstEdge,index;
 	Node* n;
-	
-	auto it = find_if(nodes.begin(), nodes.end(), [node](Node* a) {return a->ID == node; });
-
-	if (it == nodes.end()) {
+	if (nodeIndex(node) == nodes.size()) {
 		n = new Node(node, 0);
-
 		if (nodes.empty()) {
 			firstEdge = 0;
 			nodes.insert(lower_bound(nodes.begin(), nodes.end(), n, cmpNodeID), n);
@@ -52,8 +48,8 @@ void Graph::removeElement(int node)
 	int begin, end;
 	int removedEdges = 0;
 	Node* it = nullptr;
-	auto i = find_if(nodes.begin(), nodes.end(), [node](Node* a) {return a->ID == node; });
-	if (i == nodes.end())
+	int debug = nodeIndex(node);
+	if (nodeIndex(node) == nodes.size())
 		throw exception("Ne postoji element");
 
 	for (int index=0; index < nodes.size();index++)
@@ -95,17 +91,14 @@ void Graph::removeElement(int node)
 bool cmpEdgesID(Edge* a, Edge* b) {
 	return a->IDSinkNode < b->IDSinkNode;
 }
-void Graph::addEdge(int node1, int node2, double cost)
+void Graph::addEdge(int node1, int node2, double cost, bool np)
 {
-	auto it1 = find_if(nodes.begin(), nodes.end(), [node1](Node* a) {return a->ID == node1; });
-	auto it2 = find_if(nodes.begin(), nodes.end(), [node2](Node* a) {return a->ID == node2; });
-	if (it1 == nodes.end()|| it1 == nodes.end())
+	if (nodeIndex(node1)==nodes.size()|| nodeIndex(node2) == nodes.size())
 		throw exception("Ne postoji element");
 
-	int  first,second,begin,end, inc = 0;
+	int  first,second,indexFirst,indexE,indexSecond,begin,end, inc = 1;
 	Edge* e;
 	Node* n;
-	bool endCheck;
 	if (node1 < node2) {
 		first = node1;
 		second = node2;
@@ -114,42 +107,24 @@ void Graph::addEdge(int node1, int node2, double cost)
 		first = node2;
 		second = node1;
 	}
-	for (int i=0;i<nodes.size();i++)
+	edgeIndex(first, second, indexFirst, indexE);
+	if (indexE != edges.size())
+		throw exception("Vec postoji veza");
+	edgeRange(indexFirst, begin, end);
+	e = new Edge(second, cost, np);
+	sortedEdgeInsert(begin, end, e);
+	indexSecond = nodeIndex(second);
+	e = new Edge(first, cost, np);
+	for (int i=indexFirst+1;i<nodes.size();i++)
 	{
 		n = nodes[i];
 		n->firstEdge += inc;
-		if (n->ID == first || n->ID == second)
-		{
-			auto startIt=edges.begin()+ n->firstEdge;
-			vector<Edge*>::iterator endIt;
-			if ((i + 1) != nodes.size()) 
-				endIt = edges.begin() + nodes[i + 1]->firstEdge+inc;
-			else
-				endIt =edges.end();
-			if (inc == 0) {
-				auto it = find_if(startIt, endIt, [second](Edge* a) {return a->IDSinkNode == second; });
-				if (it != endIt)
-					throw exception("Vec postoji veza");
-				else
-					e = new Edge(second, cost);
-			}
-			else {
-				auto it = find_if(startIt, endIt, [first](Edge* a) {return a->IDSinkNode == first; });
-				if (it != endIt)
-					throw exception("Vec postoji veza");
-				else
-		 			e = new Edge(first,cost);
-			}
-			begin = n->firstEdge;
-			endCheck = (i + 1) != nodes.size();
-			if (endCheck)
-				end = nodes[i + 1]->firstEdge+inc;
-			else
-				end = edges.size();
-			if (edges.empty())
-				edges.push_back(e);
-			else
-				edges.insert(lower_bound(edges.begin() + begin, edges.begin() + end, e, cmpEdgesID), e);
+
+		if (i == indexSecond) {
+			edgeRange(indexSecond, begin, end);
+			if (end != edges.size())
+				end += inc;
+			sortedEdgeInsert(begin, end, e);
 			inc++;
 		}
 	}
@@ -158,9 +133,7 @@ void Graph::addEdge(int node1, int node2, double cost)
 
 void Graph::removeEdge(int node1, int node2)
 {
-	auto it1 = find_if(nodes.begin(), nodes.end(), [node1](Node* a) {return a->ID == node1; });
-	auto it2 = find_if(nodes.begin(), nodes.end(), [node2](Node* a) {return a->ID == node2; });
-	if (it1 == nodes.end() || it1 == nodes.end())
+	if (nodeIndex(node1) == nodes.size() || nodeIndex(node2) == nodes.size())
 		throw exception("Ne postoji element");
 
 	int  begin, end, dec = 0;
@@ -222,12 +195,100 @@ vector<Node*>::iterator Graph::findNode(int id)
 		if ((*it)->ID == id) {
 			return it;
 		}
+	return nodes.end();
 }
 
 int Graph::nodeIndex(int id)
 {
 	return distance(nodes.begin(),findNode(id));
 }
+
+void Graph::edgeIndex(int id1, int id2, int& index1, int& index2)
+{
+	int index,begin, end;
+	index = nodeIndex(id1);
+	if (index == nodes.size())
+		throw exception("Ne postoji element!");
+
+	index1 = index;
+	edgeRange(index, begin, end);
+	for (int index = begin; index < end; index++) {
+		if (edges[index]->IDSinkNode == id2)
+		{
+			index2 = index;
+			return;
+		}
+	}
+	index2 = edges.size();
+}
+
+void Graph::edgeRange(int nodeindex, int& index1, int& index2)
+{
+	index1 = nodes[nodeindex]->firstEdge;
+	if (nodeindex + 1 == nodes.size())
+		index2 = edges.size();
+	else
+		index2 = nodes[nodeindex + 1]->firstEdge;
+}
+
+void Graph::sortedEdgeInsert(int begin, int end, Edge* e)
+{
+	if (begin == end)
+		edges.insert(edges.begin() + begin, e);
+	else {
+		for (int i = begin; i < end; i++) {
+			if (e->IDSinkNode < edges[i]->IDSinkNode) {
+				edges.insert(edges.begin() + i, e);
+				return;
+			}
+		}
+		edges.insert(edges.begin() + end, e);
+	}
+}
+
+void Graph::sortedNodeInsert(Node* n)
+{
+	for (int i = 0; i < nodes.size(); i++) {
+		if (n->ID < nodes[i]->ID) {
+			nodes.insert(nodes.begin() + i, n);
+			return;
+		}
+	}
+	nodes.insert(nodes.end(), n);
+}
+
+double Graph::findMinimalCost(int& id1, int& id2)
+{
+	int begin, end, min=edges[0]->cost;
+	id1 = nodes[0]->ID;
+	id2 = edges[0]->IDSinkNode;
+	for (int i = 0;i<nodes.size(); i++) {
+		edgeRange(i, begin, end);
+		for (int j = begin; j < end; j++) {
+			if (edges[j]->cost < min) {
+				id1 = nodes[i]->ID;
+				id2 = edges[j]->IDSinkNode;
+				min=edges[j]->cost;
+			}
+		}
+	}
+	return min;
+}
+
+void Graph::mergeGraphs(Graph& g)
+{
+	for (Node* n : g.nodes) {
+		sortedNodeInsert(n);
+	}
+}
+
+void Graph::clearEdges()
+{
+	for (Edge* e : edges)
+		delete e;
+	edges.clear();
+}
+
 
 Node* Graph::node(int index)
 {
@@ -248,15 +309,23 @@ Graph::Graph(Graph&& g):nodes(g.nodes),edges(g.edges)
 
 Graph& Graph::operator=(Graph&& g)
 {
-	nodes = move(g.nodes);
-	edges = move(g.edges);
+	nodes = g.nodes;
+	edges = g.edges;
 	g.nodes.clear();
 	g.edges.clear();
 	return *this;
 }
 
-Graph::Graph(Graph& g):nodes(g.nodes),edges(g.edges)
+Graph::Graph(const Graph& g)
 {
+	int begin, end;
+	Node* n;
+	for (Node* it : g.nodes) {
+		nodes.insert(nodes.end(), new Node(it->ID, it->firstEdge));
+	}
+	for (Edge* it : g.edges) {
+		edges.insert(edges.end(), new Edge(it->IDSinkNode, it->cost,it->newPath));
+	}
 }
 
 Graph::~Graph()
@@ -430,6 +499,6 @@ Node::Node(int id,int start):ID(id),firstEdge(start)
 	
 }
 
-Edge::Edge(int IDSink, double cost): IDSinkNode(IDSink),cost(cost)
+Edge::Edge(int IDSink, double cost, bool np): IDSinkNode(IDSink),cost(cost), newPath(np)
 {
 }
